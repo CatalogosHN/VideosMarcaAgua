@@ -312,9 +312,11 @@
           </div>
 
           <div class="noteBox" id="videoCompatNote">
-            <b>⚠️ Video:</b> La exportación de video usa <i>MediaRecorder</i>. En PC/Android (Chrome/Edge) funciona muy bien.
-            En algunos iPhone/iPad puede fallar o exportar sin audio por limitaciones del navegador. Si te falla en iPhone,
-            hazlo en PC o Android.
+            <b>⚠️ Video:</b> La exportación usa <i>MediaRecorder</i>. En PC/Android (Chrome/Edge) suele funcionar muy bien.
+            En algunos iPhone/iPad puede fallar o exportar sin audio. <br/>
+            <b>Si el video te sale 0:00 o “dimensiones inválidas”</b>, tu navegador probablemente no puede reproducir ese codec
+            (muy común: <b>HEVC/H.265</b>). Convierte a <b>MP4 (H.264/AVC + AAC)</b> y vuelve a intentar. <br/>
+            <b>Grabar:</b> en muchos navegadores requiere abrir el archivo en <b>https</b> (por ejemplo GitHub Pages) o <b>localhost</b>.
           </div>
 
           <div class="footerNote">
@@ -877,40 +879,68 @@
       }
 
       async function loadVideoElementFromFile(file) {
-        const url = URL.createObjectURL(file);
-        const v = document.createElement("video");
-        v.src = url;
-        v.preload = "metadata";
-        v.playsInline = true;
-        v.muted = true; // para permitir autoplay durante proceso
-        v.crossOrigin = "anonymous";
-        v.style.position = "fixed";
-        v.style.left = "-9999px";
-        v.style.top = "-9999px";
-        v.style.width = "1px";
-        v.style.height = "1px";
-        document.body.appendChild(v);
+  const url = URL.createObjectURL(file);
+  const v = document.createElement("video");
+  v.src = url;
+  v.preload = "auto";
+  v.playsInline = true;
+  v.muted = true; // para permitir autoplay durante proceso
+  v.crossOrigin = "anonymous";
+  v.style.position = "fixed";
+  v.style.left = "-9999px";
+  v.style.top = "-9999px";
+  v.style.width = "1px";
+  v.style.height = "1px";
+  document.body.appendChild(v);
 
-        await new Promise((resolve, reject) => {
-          const onMeta = () => { cleanup(); resolve(); };
-          const onErr = () => { cleanup(); reject(new Error("No se pudo leer el video.")); };
-          const cleanup = () => {
-            v.removeEventListener("loadedmetadata", onMeta);
-            v.removeEventListener("error", onErr);
-          };
-          v.addEventListener("loadedmetadata", onMeta);
-          v.addEventListener("error", onErr);
-        });
+  const waitAny = (events, timeoutMs) => new Promise((resolve, reject) => {
+    let done = false;
+    const on = (e) => { if (done) return; done = true; cleanup(); resolve(e); };
+    const onErr = () => { if (done) return; done = true; cleanup(); reject(new Error("No se pudo leer el video (codec no soportado o archivo dañado).")); };
+    const cleanup = () => {
+      events.forEach(ev => v.removeEventListener(ev, on));
+      v.removeEventListener("error", onErr);
+      clearTimeout(t);
+    };
+    events.forEach(ev => v.addEventListener(ev, on, { once: true }));
+    v.addEventListener("error", onErr, { once: true });
+    const t = setTimeout(() => {
+      if (done) return;
+      done = true;
+      cleanup();
+      reject(new Error("Tiempo de espera leyendo el video."));
+    }, timeoutMs);
+  });
 
-        const cleanupAll = () => {
-          try { v.pause(); } catch {}
-          try { URL.revokeObjectURL(url); } catch {}
-          try { v.remove(); } catch {}
-        };
+  // Fuerza carga
+  try { v.load(); } catch {}
 
-        return { v, cleanup: cleanupAll };
+  // 1) Esperar metadatos
+  await waitAny(["loadedmetadata"], 15000);
+
+  // 2) A veces loadedmetadata llega pero aún sin dimensiones -> intentar canplay/loadeddata + seek
+  if (!v.videoWidth || !v.videoHeight) {
+    try { v.preload = "auto"; v.load(); } catch {}
+    try { await waitAny(["loadeddata", "canplay", "resize"], 12000); } catch {}
+
+    // Intento extra: mover a un frame para forzar decode (si hay duración)
+    try {
+      if (Number.isFinite(v.duration) && v.duration > 0) {
+        v.currentTime = Math.min(0.1, v.duration / 2);
+        await waitAny(["seeked", "timeupdate", "resize"], 8000);
+        v.currentTime = 0;
       }
+    } catch {}
+  }
 
+  const cleanupAll = () => {
+    try { v.pause(); } catch {}
+    try { URL.revokeObjectURL(url); } catch {}
+    try { v.remove(); } catch {}
+  };
+
+  return { v, cleanup: cleanupAll };
+}
       async function processVideoItem(item, settings) {
         item.error = null;
 
@@ -931,7 +961,7 @@
           item.h = h;
           item.duration = duration;
 
-          if (!w || !h) throw new Error("Dimensiones inválidas del video.");
+          if (!w || !h) throw new Error("No pude leer las dimensiones/duración del video. Esto suele pasar cuando el navegador no puede reproducir ese codec (por ejemplo HEVC/H.265). Convierte el video a MP4 (H.264/AVC + AAC) y vuelve a intentar.");
 
           const ratioW = settings.maxSide / w;
           const ratioH = settings.maxSide / h;
