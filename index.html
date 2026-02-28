@@ -1,0 +1,1359 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Marcador Multimedia Anti-Robo</title>
+  <meta name="theme-color" content="#0f172a" />
+  <style>
+    :root{
+      --bg:#0b1220;
+      --panel:#111827;
+      --panel2:#1f2937;
+      --line:#334155;
+      --text:#e5e7eb;
+      --muted:#94a3b8;
+      --ok:#22c55e;
+      --accent:#3b82f6;
+      --warn:#f59e0b;
+      --danger:#ef4444;
+      --chip:#0f172a;
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;padding:0;background:linear-gradient(180deg,#020617,#0b1220 35%,#0b1220);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+    body{min-height:100vh}
+    .wrap{max-width:1200px;margin:0 auto;padding:14px}
+    h1{font-size:1.15rem;margin:0 0 10px}
+    .sub{color:var(--muted);font-size:.92rem;margin-bottom:12px}
+    .grid{
+      display:grid;
+      gap:12px;
+      grid-template-columns: 1fr;
+    }
+    @media (min-width: 980px){
+      .grid{grid-template-columns: 380px 1fr}
+    }
+    .card{
+      background:rgba(17,24,39,.92);
+      border:1px solid rgba(148,163,184,.2);
+      border-radius:16px;
+      box-shadow:0 10px 30px rgba(0,0,0,.28);
+      overflow:hidden;
+    }
+    .card .hd{
+      padding:12px 14px;
+      border-bottom:1px solid rgba(148,163,184,.12);
+      background:rgba(255,255,255,.02);
+      font-weight:700;
+      font-size:.95rem;
+    }
+    .card .bd{padding:12px}
+    .controls{display:grid;gap:10px}
+    .row{display:grid;gap:8px;grid-template-columns:1fr 1fr}
+    .row3{display:grid;gap:8px;grid-template-columns:1fr 1fr 1fr}
+    .field{display:grid;gap:6px}
+    label{font-size:.84rem;color:#cbd5e1}
+    input[type="text"], input[type="number"], select{
+      width:100%;
+      background:#0b1220;
+      border:1px solid var(--line);
+      color:var(--text);
+      border-radius:10px;
+      padding:10px 11px;
+      outline:none;
+      font-size:.95rem;
+    }
+    input[type="range"]{width:100%}
+    .hint{font-size:.78rem;color:var(--muted)}
+    .btns{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+    .btns3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+    button,.btn{
+      appearance:none;border:1px solid rgba(148,163,184,.2);
+      background:#1f2937;color:var(--text);
+      padding:10px 12px;border-radius:10px;cursor:pointer;
+      font-weight:600;font-size:.9rem;
+      transition:transform .05s ease,opacity .12s ease,background .12s ease,border-color .12s ease;
+      text-align:center;text-decoration:none;
+    }
+    button:hover,.btn:hover{background:#243244;border-color:#475569}
+    button:active,.btn:active{transform:translateY(1px)}
+    button.primary{background:linear-gradient(180deg,#2563eb,#1d4ed8);border-color:#1e40af}
+    button.primary:hover{filter:brightness(1.05)}
+    button.success{background:linear-gradient(180deg,#16a34a,#15803d);border-color:#166534}
+    button.warn{background:linear-gradient(180deg,#d97706,#b45309);border-color:#92400e}
+    button.ghost{background:#0b1220}
+    button:disabled{opacity:.45;cursor:not-allowed}
+    .drop{
+      border:2px dashed rgba(148,163,184,.25);
+      border-radius:14px;
+      padding:14px;
+      text-align:center;
+      background:rgba(2,6,23,.35);
+      transition:border-color .15s ease, background .15s ease;
+    }
+    .drop.active{
+      border-color:#60a5fa;
+      background:rgba(59,130,246,.08);
+    }
+    .chips{display:flex;flex-wrap:wrap;gap:8px}
+    .chip{
+      display:inline-flex;align-items:center;gap:6px;
+      background:var(--chip);
+      border:1px solid rgba(148,163,184,.15);
+      color:#dbeafe;
+      padding:5px 8px;border-radius:999px;font-size:.78rem;
+    }
+    .stats{
+      display:flex;flex-wrap:wrap;gap:8px;margin-top:4px
+    }
+    .stat{
+      background:#0b1220;border:1px solid rgba(148,163,184,.12);
+      color:#cbd5e1;padding:6px 8px;border-radius:10px;font-size:.8rem
+    }
+    .status{
+      margin-top:8px;font-size:.88rem;color:#cbd5e1;
+      min-height:1.2em;
+      white-space:pre-wrap;
+    }
+    .status.ok{color:#86efac}
+    .status.err{color:#fca5a5}
+    .gallery{
+      display:grid;gap:10px;
+      grid-template-columns:repeat(auto-fill,minmax(170px,1fr));
+    }
+    .item{
+      border:1px solid rgba(148,163,184,.15);
+      border-radius:14px;
+      overflow:hidden;
+      background:#0b1220;
+      display:grid;
+      grid-template-rows:auto auto 1fr auto;
+    }
+    .thumbWrap{
+      aspect-ratio:1/1;
+      background:#020617;
+      display:grid;place-items:center;
+      overflow:hidden;
+      border-bottom:1px solid rgba(148,163,184,.08);
+      position:relative;
+    }
+    .thumbWrap img, .thumbWrap video{
+      width:100%;height:100%;object-fit:cover;display:block;
+    }
+    .badge{
+      position:absolute;top:8px;left:8px;
+      background:rgba(15,23,42,.85);border:1px solid rgba(148,163,184,.2);
+      color:#e2e8f0;border-radius:999px;font-size:.72rem;padding:3px 7px;
+    }
+    .name{
+      font-size:.82rem;font-weight:600;padding:8px 10px 2px;
+      line-height:1.2;
+      word-break:break-word;
+    }
+    .meta{
+      font-size:.74rem;color:var(--muted);padding:0 10px 8px;
+    }
+    .miniActions{
+      display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:0 10px 10px;
+    }
+    .miniActions button{padding:8px 8px;font-size:.8rem;border-radius:9px}
+    .hidden{display:none!important}
+    .footerNote{margin-top:10px;color:var(--muted);font-size:.78rem;line-height:1.3}
+    .progress{
+      width:100%;height:10px;border-radius:999px;overflow:hidden;
+      background:#0b1220;border:1px solid rgba(148,163,184,.15);
+      margin-top:8px;
+    }
+    .bar{
+      height:100%;width:0%;
+      background:linear-gradient(90deg,#2563eb,#22c55e);
+      transition:width .15s ease;
+    }
+    .noteBox{
+      background:rgba(2,6,23,.55);
+      border:1px solid rgba(148,163,184,.15);
+      border-radius:12px;
+      padding:10px 10px;
+      color:#cbd5e1;
+      font-size:.8rem;
+      line-height:1.35;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>📸🎬 Marcador Multimedia Anti-Robo (Dev: Brayan Raudales)</h1>
+    <div class="sub">
+      Fotos y videos en una sola herramienta — PC, Android y iPhone (con notas de compatibilidad en video).
+    </div>
+
+    <div class="grid">
+      <!-- Panel izquierdo -->
+      <section class="card">
+        <div class="hd">Configuración y carga</div>
+        <div class="bd controls">
+          <div class="row">
+            <div class="field">
+              <label>Tipo de archivo</label>
+              <select id="fileType">
+                <option value="images" selected>🖼️ Fotos</option>
+                <option value="videos">🎬 Videos</option>
+                <option value="both">📁 Fotos + Videos</option>
+              </select>
+              <div class="hint">Esto controla qué acepta la galería y el arrastre.</div>
+            </div>
+            <div class="field">
+              <label>Modo</label>
+              <select id="mode">
+                <option value="strong" selected>Anti-robo fuerte</option>
+                <option value="clean">Más limpio</option>
+              </select>
+              <div class="hint">"Fuerte" deja el patrón más agresivo.</div>
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="field">
+              <label>Número 1</label>
+              <input id="num1" type="text" value="9631-0102" />
+            </div>
+            <div class="field">
+              <label>Número 2</label>
+              <input id="num2" type="text" value="8790-2458" />
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="field">
+              <label>Lado máximo (px)</label>
+              <input id="maxSide" type="number" min="300" max="8000" step="50" value="2000" />
+              <div class="hint">Para videos también reduce resolución (más rápido, menos peso).</div>
+            </div>
+            <div class="field">
+              <label>Opacidad marca (<span id="opacityValue">0.24</span>)</label>
+              <input id="opacity" type="range" min="0.05" max="0.70" step="0.01" value="0.24" />
+              <div class="hint">Más alto = más difícil de robar.</div>
+            </div>
+          </div>
+
+          <!-- Opciones solo para fotos -->
+          <div id="photoOptions" class="row">
+            <div class="field">
+              <label>Calidad JPG (%)</label>
+              <input id="jpgQuality" type="number" min="40" max="100" step="1" value="92" />
+              <div class="hint">PNG/WEBP respetan transparencia; si no, sale JPG.</div>
+            </div>
+            <div class="field">
+              <label>Formato salida fotos</label>
+              <select id="photoOut">
+                <option value="auto" selected>Auto (igual que entrada)</option>
+                <option value="jpg">JPG (más compatible)</option>
+                <option value="png">PNG</option>
+                <option value="webp">WEBP</option>
+              </select>
+              <div class="hint">Auto = PNG/WEBP si la foto lo era; si no, JPG.</div>
+            </div>
+          </div>
+
+          <!-- Opciones solo para videos -->
+          <div id="videoOptions" class="row hidden">
+            <div class="field">
+              <label>FPS video</label>
+              <input id="videoFps" type="number" min="10" max="60" step="1" value="30" />
+              <div class="hint">30 recomendado. Menos = más liviano.</div>
+            </div>
+            <div class="field">
+              <label>Bitrate video (Mbps)</label>
+              <input id="videoMbps" type="number" min="1" max="40" step="1" value="10" />
+              <div class="hint">Más alto = más calidad y más peso.</div>
+            </div>
+          </div>
+
+          <div class="drop" id="dropZone">
+            <div style="font-weight:700" id="dropTitle">⬇️ Arrastra fotos aquí</div>
+            <div class="hint" style="margin-top:6px" id="dropHint">
+              También puedes pegar con <b>Ctrl + V</b> en PC (solo fotos).
+            </div>
+          </div>
+
+          <div class="btns3">
+            <button id="btnGallery" class="primary">🗂️ Galería</button>
+            <button id="btnCamera" class="warn">📷 Cámara</button>
+            <button id="btnClear" class="ghost">🗑️ Limpiar</button>
+          </div>
+
+          <div class="btns">
+            <button id="btnProcess" class="primary">⚙️ Procesar</button>
+            <button id="btnDownload" class="success" disabled>⬇️ Descargar</button>
+          </div>
+
+          <!-- Inputs -->
+          <input id="inputImages" class="hidden" type="file" accept="image/*" multiple />
+          <input id="inputImageCamera" class="hidden" type="file" accept="image/*" capture="environment" />
+
+          <input id="inputVideos" class="hidden" type="file" accept="video/*" multiple />
+          <input id="inputVideoCamera" class="hidden" type="file" accept="video/*" capture="environment" />
+
+          <input id="inputBoth" class="hidden" type="file" accept="image/*,video/*" multiple />
+
+          <div class="stats">
+            <div class="stat">Archivos: <b id="countItems">0</b></div>
+            <div class="stat">Procesados: <b id="countProcessed">0</b></div>
+          </div>
+
+          <div class="progress" aria-hidden="true"><div class="bar" id="progressBar"></div></div>
+          <div id="status" class="status"></div>
+
+          <div class="chips">
+            <span class="chip">💻 Ctrl+V (fotos)</span>
+            <span class="chip">🪟 Drag & Drop</span>
+            <span class="chip">📱 Android/iPhone</span>
+            <span class="chip">🗜️ ZIP (si no pesa mucho)</span>
+          </div>
+
+          <div class="noteBox" id="videoCompatNote">
+            <b>⚠️ Video:</b> La exportación de video usa <i>MediaRecorder</i>. En PC/Android (Chrome/Edge) funciona muy bien.
+            En algunos iPhone/iPad puede fallar o exportar sin audio por limitaciones del navegador. Si te falla en iPhone,
+            hazlo en PC o Android.
+          </div>
+
+          <div class="footerNote">
+            Nota iPhone (fotos): si alguna sale HEIC y no procesa, cambia la cámara a <b>Most Compatible</b> (JPG) o usa “Galería”.
+          </div>
+        </div>
+      </section>
+
+      <!-- Panel derecho -->
+      <section class="card">
+        <div class="hd">Vista previa y resultados</div>
+        <div class="bd">
+          <div id="emptyState" class="hint" style="padding:8px 2px 2px">
+            Aún no hay archivos. Agrega desde galería/cámara, arrastrando, o con Ctrl+V (fotos).
+          </div>
+          <div id="gallery" class="gallery"></div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- JSZip -->
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+
+  <script>
+    (() => {
+      "use strict";
+
+      // ===============================
+      // Estado
+      // ===============================
+      const state = {
+        items: [], // {id, file, name, kind, type, originalUrl, processedBlob, processedUrl, processedName, w,h,pw,ph,duration, error}
+        nextId: 1,
+        isProcessing: false,
+        cancel: false
+      };
+
+      // ===============================
+      // DOM refs
+      // ===============================
+      const $ = (id) => document.getElementById(id);
+      const el = {
+        fileType: $("fileType"),
+        num1: $("num1"),
+        num2: $("num2"),
+        maxSide: $("maxSide"),
+        jpgQuality: $("jpgQuality"),
+        opacity: $("opacity"),
+        opacityValue: $("opacityValue"),
+        mode: $("mode"),
+        photoOut: $("photoOut"),
+
+        videoFps: $("videoFps"),
+        videoMbps: $("videoMbps"),
+        photoOptions: $("photoOptions"),
+        videoOptions: $("videoOptions"),
+
+        dropZone: $("dropZone"),
+        dropTitle: $("dropTitle"),
+        dropHint: $("dropHint"),
+
+        btnGallery: $("btnGallery"),
+        btnCamera: $("btnCamera"),
+        btnClear: $("btnClear"),
+        btnProcess: $("btnProcess"),
+        btnDownload: $("btnDownload"),
+
+        inputImages: $("inputImages"),
+        inputImageCamera: $("inputImageCamera"),
+        inputVideos: $("inputVideos"),
+        inputVideoCamera: $("inputVideoCamera"),
+        inputBoth: $("inputBoth"),
+
+        countItems: $("countItems"),
+        countProcessed: $("countProcessed"),
+        status: $("status"),
+        progressBar: $("progressBar"),
+
+        gallery: $("gallery"),
+        emptyState: $("emptyState"),
+        videoCompatNote: $("videoCompatNote")
+      };
+
+      // ===============================
+      // Utilidades
+      // ===============================
+      function setStatus(msg, type = "") {
+        el.status.textContent = msg || "";
+        el.status.className = "status" + (type ? " " + type : "");
+      }
+
+      function setProgress(percent) {
+        const p = Math.max(0, Math.min(100, percent || 0));
+        el.progressBar.style.width = p + "%";
+      }
+
+      function clamp(n, min, max) {
+        return Math.max(min, Math.min(max, n));
+      }
+
+      function formatBytes(bytes) {
+        if (!Number.isFinite(bytes)) return "-";
+        const units = ["B","KB","MB","GB"];
+        let i = 0, n = bytes;
+        while (n >= 1024 && i < units.length - 1) { n /= 1024; i++; }
+        return `${n.toFixed(n < 10 && i > 0 ? 1 : 0)} ${units[i]}`;
+      }
+
+      function formatTime(sec) {
+        if (!Number.isFinite(sec)) return "-";
+        sec = Math.max(0, sec);
+        const m = Math.floor(sec / 60);
+        const s = Math.floor(sec % 60);
+        return m > 0 ? `${m}:${String(s).padStart(2,"0")}` : `${s}s`;
+      }
+
+      function extFromName(name = "") {
+        const m = name.toLowerCase().match(/\.([a-z0-9]+)$/);
+        return m ? m[1] : "";
+      }
+
+      function baseName(name = "") {
+        return name.replace(/\.[^.]+$/, "");
+      }
+
+      function safeFileName(name) {
+        return name.replace(/[<>:"/\\|?*\x00-\x1F]/g, "_");
+      }
+
+      function dedupeName(proposed, existingNames) {
+        if (!existingNames.has(proposed)) return proposed;
+        const extMatch = proposed.match(/(\.[^.]+)$/);
+        const ext = extMatch ? extMatch[1] : "";
+        const core = ext ? proposed.slice(0, -ext.length) : proposed;
+        let i = 2;
+        let candidate = `${core} (${i})${ext}`;
+        while (existingNames.has(candidate)) {
+          i++;
+          candidate = `${core} (${i})${ext}`;
+        }
+        return candidate;
+      }
+
+      function normalizeIncomingFile(file, sourceLabel = "archivo") {
+        const name = file.name || `${sourceLabel}_${Date.now()}`;
+        return new File([file], name, { type: file.type || "application/octet-stream" });
+      }
+
+      function isImageFile(f) {
+        return (f.type && f.type.startsWith("image/")) || /\.(png|jpe?g|webp|bmp|gif|heic|heif)$/i.test(f.name || "");
+      }
+
+      function isVideoFile(f) {
+        return (f.type && f.type.startsWith("video/")) || /\.(mp4|mov|m4v|webm|mkv|3gp|avi)$/i.test(f.name || "");
+      }
+
+      function getSettings() {
+        const num1 = (el.num1.value || "").trim() || "9631-0102";
+        const num2 = (el.num2.value || "").trim() || "8790-2458";
+        const maxSide = clamp(parseInt(el.maxSide.value || "2000", 10), 300, 8000);
+        const opacity = clamp(parseFloat(el.opacity.value || "0.24"), 0.05, 0.70);
+        const mode = el.mode.value === "clean" ? "clean" : "strong";
+
+        // Fotos
+        const jpgQuality = clamp(parseInt(el.jpgQuality.value || "92", 10), 40, 100);
+        const photoOut = el.photoOut.value || "auto";
+
+        // Videos
+        const videoFps = clamp(parseInt(el.videoFps.value || "30", 10), 10, 60);
+        const videoMbps = clamp(parseInt(el.videoMbps.value || "10", 10), 1, 40);
+
+        return { num1, num2, maxSide, jpgQuality, opacity, mode, photoOut, videoFps, videoMbps };
+      }
+
+      function rgbaFromOpacity(opacity) {
+        return `rgba(40,150,255,${opacity})`;
+      }
+
+      async function canvasToBlob(canvas, mime, qualityFraction = 0.92) {
+        return new Promise((resolve, reject) => {
+          canvas.toBlob((blob) => {
+            if (blob) resolve(blob);
+            else reject(new Error("No se pudo exportar."));
+          }, mime, qualityFraction);
+        });
+      }
+
+      function revokeItemUrls(item) {
+        if (item.originalUrl) URL.revokeObjectURL(item.originalUrl);
+        if (item.processedUrl) URL.revokeObjectURL(item.processedUrl);
+      }
+
+      function clearAll() {
+        state.cancel = true;
+        state.items.forEach(revokeItemUrls);
+        state.items = [];
+        state.nextId = 1;
+        state.isProcessing = false;
+        setProgress(0);
+        setStatus("");
+        render();
+      }
+
+      // ===============================
+      // UI: tipo de archivo
+      // ===============================
+      function updatePickModeUI() {
+        const mode = el.fileType.value || "images";
+
+        const wantsPhotos = (mode === "images" || mode === "both");
+        const wantsVideos = (mode === "videos" || mode === "both");
+
+        el.photoOptions.classList.toggle("hidden", !wantsPhotos);
+        el.videoOptions.classList.toggle("hidden", !wantsVideos);
+
+        if (mode === "images") {
+          el.dropTitle.textContent = "⬇️ Arrastra fotos aquí";
+          el.dropHint.innerHTML = 'También puedes pegar con <b>Ctrl + V</b> en PC (solo fotos).';
+          el.btnCamera.textContent = "📷 Cámara";
+        } else if (mode === "videos") {
+          el.dropTitle.textContent = "⬇️ Arrastra videos aquí";
+          el.dropHint.textContent = "Tip: videos largos = más tiempo y más peso.";
+          el.btnCamera.textContent = "🎥 Grabar";
+        } else {
+          el.dropTitle.textContent = "⬇️ Arrastra fotos o videos aquí";
+          el.dropHint.innerHTML = 'Puedes pegar con <b>Ctrl + V</b> (solo fotos) o arrastrar videos.';
+          el.btnCamera.textContent = "📷/🎥 Cámara";
+        }
+
+        // Nota compatibilidad video: visible solo si se permite video
+        el.videoCompatNote.classList.toggle("hidden", !wantsVideos);
+      }
+
+      // ===============================
+      // Carga de archivos
+      // ===============================
+      function addFiles(filesLike, source = "archivo") {
+        const files = Array.from(filesLike || []);
+        if (!files.length) return;
+
+        const pick = el.fileType.value || "images";
+        const allowImages = (pick === "images" || pick === "both");
+        const allowVideos = (pick === "videos" || pick === "both");
+
+        const accepted = files.filter(f => (allowImages && isImageFile(f)) || (allowVideos && isVideoFile(f)));
+
+        if (!accepted.length) {
+          setStatus("No se detectaron archivos válidos según el tipo seleccionado.", "err");
+          return;
+        }
+
+        const existingNames = new Set(state.items.map(i => i.name));
+        let added = 0;
+
+        for (const raw of accepted) {
+          const file = normalizeIncomingFile(raw, source);
+          const kind = isVideoFile(file) && !isImageFile(file) ? "video" : (isImageFile(file) ? "image" : (isVideoFile(file) ? "video" : "unknown"));
+
+          let name = safeFileName(file.name || `${source}_${Date.now()}`);
+          name = dedupeName(name, existingNames);
+          existingNames.add(name);
+
+          const originalUrl = URL.createObjectURL(file);
+
+          state.items.push({
+            id: state.nextId++,
+            file,
+            name,
+            kind,
+            type: file.type || "",
+            originalUrl,
+            processedBlob: null,
+            processedUrl: null,
+            processedName: null,
+            w: null,
+            h: null,
+            pw: null,
+            ph: null,
+            duration: null,
+            error: null
+          });
+
+          added++;
+        }
+
+        if (added > 0) {
+          setStatus(`Se agregaron ${added} archivo(s).`, "ok");
+        }
+        render();
+      }
+
+      function handlePaste(e) {
+        // Solo fotos
+        const pick = el.fileType.value || "images";
+        if (pick === "videos") return;
+
+        const cd = e.clipboardData;
+        if (!cd || !cd.items) return;
+        const imgs = [];
+        for (const item of cd.items) {
+          if (item.kind === "file" && item.type.startsWith("image/")) {
+            const f = item.getAsFile();
+            if (f) imgs.push(f);
+          }
+        }
+        if (imgs.length) {
+          e.preventDefault();
+          addFiles(imgs, "pegado");
+        }
+      }
+
+      function handleDrop(e) {
+        e.preventDefault();
+        el.dropZone.classList.remove("active");
+        const dt = e.dataTransfer;
+        if (!dt) return;
+        const files = dt.files;
+        if (files && files.length) addFiles(files, "arrastre");
+      }
+
+      // ===============================
+      // Marca de agua (patrón) - igual que tu idea original
+      // ===============================
+      function drawWatermarkPattern(ctx, w2, h2, settings) {
+        const numeros = [settings.num1, settings.num2].filter(Boolean);
+        if (!numeros.length) return;
+        if (numeros.length === 1) numeros.push(numeros[0]);
+
+        const maxLineLen = Math.max(...numeros.map(n => n.length));
+        const shortSide = Math.min(w2, h2);
+        const aspect = w2 / h2;
+
+        let psByShort, psByWidth;
+        if (settings.mode === "strong") {
+          psByShort = Math.floor(shortSide * 0.075);
+          psByWidth = Math.floor((w2 * 0.34) / (0.60 * maxLineLen));
+        } else {
+          psByShort = Math.floor(shortSide * 0.085);
+          psByWidth = Math.floor((w2 * 0.40) / (0.60 * maxLineLen));
+        }
+
+        let ps = Math.min(psByShort, psByWidth);
+        ps = clamp(ps, 18, 160);
+
+        ctx.save();
+        ctx.font = `${ps}px Arial, sans-serif`;
+        ctx.fillStyle = rgbaFromOpacity(settings.opacity);
+        ctx.textBaseline = "top";
+
+        const measureTextW = (txt) => Math.ceil(ctx.measureText(txt).width);
+        const approxTextW = Math.max(measureTextW(numeros[0]), measureTextW(numeros[1]), Math.ceil(0.60 * ps * maxLineLen));
+
+        let colStep, rowStep;
+        if (settings.mode === "strong") {
+          colStep = Math.round(Math.max(approxTextW * 1.45, w2 / 3.0));
+          rowStep = Math.round(Math.max(ps * 1.85, h2 / 5.2));
+        } else {
+          colStep = Math.round(Math.max(approxTextW * 1.60, w2 / 2.5));
+          rowStep = Math.round(Math.max(ps * 2.15, h2 / 4.4));
+        }
+
+        if (colStep < approxTextW + 20) colStep = approxTextW + 20;
+        if (rowStep < ps + 18) rowStep = ps + 18;
+
+        let desiredCols = 3, desiredRows = 4;
+        if (aspect >= 1.45) {
+          desiredCols = 4; desiredRows = 4;
+        } else if (aspect <= 0.75) {
+          desiredCols = 3; desiredRows = 5;
+        }
+
+        if (w2 >= 1500) desiredCols += 1;
+        if (h2 >= 1500) desiredRows += 1;
+
+        if (settings.mode === "strong") {
+          if (w2 >= 1100) desiredCols += 1;
+          if (h2 >= 1100) desiredRows += 1;
+        }
+
+        const maxColStepByCount = Math.floor(w2 / Math.max(1, (desiredCols - 0.15)));
+        const maxRowStepByCount = Math.floor(h2 / Math.max(1, (desiredRows - 0.10)));
+
+        if (maxColStepByCount > 0) colStep = Math.min(colStep, maxColStepByCount);
+        if (maxRowStepByCount > 0) rowStep = Math.min(rowStep, maxRowStepByCount);
+
+        if (colStep < approxTextW + 16) colStep = approxTextW + 16;
+        if (rowStep < ps + 14) rowStep = ps + 14;
+
+        const angleDeg = settings.mode === "strong" ? -18 : -14;
+        const angle = angleDeg * Math.PI / 180;
+
+        ctx.translate(w2 / 2, h2 / 2);
+        ctx.rotate(angle);
+
+        const diag = Math.ceil(Math.sqrt(w2 * w2 + h2 * h2));
+        const drawW = diag + approxTextW * 2;
+        const drawH = diag + ps * 3;
+
+        const xMin = -Math.floor(drawW / 2);
+        const xMax =  Math.floor(drawW / 2);
+        const yMin = -Math.floor(drawH / 2);
+        const yMax =  Math.floor(drawH / 2);
+
+        let row = 0;
+        for (let y = yMin - Math.round(ps * 0.15); y <= yMax + Math.round(ps * 1.10); y += rowStep) {
+          const offset = (row % 2 === 1) ? Math.round(colStep / 2) : 0;
+          let col = 0;
+          for (let x = xMin - approxTextW + offset; x <= xMax + approxTextW; x += colStep) {
+            const txt = numeros[(row + col) % numeros.length];
+            ctx.fillText(txt, x, y);
+            col++;
+          }
+          row++;
+        }
+
+        ctx.restore();
+      }
+
+      function buildWatermarkOverlayCanvas(w, h, settings) {
+        const overlay = document.createElement("canvas");
+        overlay.width = w;
+        overlay.height = h;
+        const octx = overlay.getContext("2d", { alpha: true });
+        octx.clearRect(0, 0, w, h);
+        drawWatermarkPattern(octx, w, h, settings);
+        return overlay;
+      }
+
+      // ===============================
+      // Procesar fotos
+      // ===============================
+      async function decodeImage(file) {
+        if ("createImageBitmap" in window) {
+          try {
+            try {
+              const bmp = await createImageBitmap(file, { imageOrientation: "from-image" });
+              return { kind: "bitmap", img: bmp, width: bmp.width, height: bmp.height };
+            } catch {
+              const bmp = await createImageBitmap(file);
+              return { kind: "bitmap", img: bmp, width: bmp.width, height: bmp.height };
+            }
+          } catch {}
+        }
+
+        const url = URL.createObjectURL(file);
+        try {
+          const img = await new Promise((resolve, reject) => {
+            const im = new Image();
+            im.onload = () => resolve(im);
+            im.onerror = () => reject(new Error("No se pudo abrir la imagen."));
+            im.src = url;
+          });
+          return { kind: "img", img, width: img.naturalWidth || img.width, height: img.naturalHeight || img.height };
+        } finally {
+          URL.revokeObjectURL(url);
+        }
+      }
+
+      function releaseDecoded(decoded) {
+        if (!decoded) return;
+        if (decoded.kind === "bitmap" && decoded.img && typeof decoded.img.close === "function") {
+          try { decoded.img.close(); } catch {}
+        }
+      }
+
+      function outputMimeForPhoto(file, photoOut) {
+        const t = (file.type || "").toLowerCase();
+        const ext = extFromName(file.name);
+        if (photoOut === "png") return "image/png";
+        if (photoOut === "webp") return "image/webp";
+        if (photoOut === "jpg") return "image/jpeg";
+
+        // auto
+        if (t === "image/png" || ext === "png") return "image/png";
+        if (t === "image/webp" || ext === "webp") return "image/webp";
+        return "image/jpeg";
+      }
+
+      function outputExtForPhotoMime(mime) {
+        if (mime === "image/png") return "png";
+        if (mime === "image/webp") return "webp";
+        return "jpg";
+      }
+
+      async function processImageItem(item, settings) {
+        item.error = null;
+        let decoded;
+        try {
+          decoded = await decodeImage(item.file);
+          const w = decoded.width;
+          const h = decoded.height;
+          item.w = w;
+          item.h = h;
+
+          if (!w || !h) throw new Error("Dimensiones inválidas.");
+
+          const ratioW = settings.maxSide / w;
+          const ratioH = settings.maxSide / h;
+          let ratio = Math.min(ratioW, ratioH);
+          if (ratio > 1) ratio = 1;
+
+          const w2 = Math.max(1, Math.round(w * ratio));
+          const h2 = Math.max(1, Math.round(h * ratio));
+          item.pw = w2;
+          item.ph = h2;
+
+          const canvas = document.createElement("canvas");
+          canvas.width = w2;
+          canvas.height = h2;
+          const ctx = canvas.getContext("2d", { alpha: true, willReadFrequently: false });
+
+          ctx.clearRect(0, 0, w2, h2);
+          ctx.drawImage(decoded.img, 0, 0, w2, h2);
+
+          drawWatermarkPattern(ctx, w2, h2, settings);
+
+          const mime = outputMimeForPhoto(item.file, settings.photoOut);
+          const quality = settings.jpgQuality / 100;
+          const blob = await canvasToBlob(canvas, mime, quality);
+
+          if (item.processedUrl) URL.revokeObjectURL(item.processedUrl);
+          item.processedBlob = blob;
+          item.processedUrl = URL.createObjectURL(blob);
+
+          const ext = outputExtForPhotoMime(mime);
+          item.processedName = safeFileName(`${baseName(item.name)}_marcada.${ext}`);
+        } catch (err) {
+          console.error("Error procesando foto", item.name, err);
+          item.error = (err && err.message) ? err.message : "Error al procesar.";
+          item.processedBlob = null;
+          if (item.processedUrl) { URL.revokeObjectURL(item.processedUrl); item.processedUrl = null; }
+          item.processedName = null;
+        } finally {
+          releaseDecoded(decoded);
+        }
+      }
+
+      // ===============================
+      // Procesar videos
+      // ===============================
+      function pickRecorderMime() {
+        // Preferencias típicas: WebM primero (Chrome/Edge/Firefox), luego MP4 (Safari si aplica).
+        const candidates = [
+          "video/webm;codecs=vp9,opus",
+          "video/webm;codecs=vp8,opus",
+          "video/webm",
+          "video/mp4;codecs=avc1.42E01E,mp4a.40.2",
+          "video/mp4"
+        ];
+        if (typeof MediaRecorder === "undefined") return { mime: "", ext: "webm" };
+        for (const c of candidates) {
+          if (MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(c)) {
+            const ext = c.includes("mp4") ? "mp4" : "webm";
+            return { mime: c, ext };
+          }
+        }
+        // Fallback: dejar vacío
+        return { mime: "", ext: "webm" };
+      }
+
+      async function loadVideoElementFromFile(file) {
+        const url = URL.createObjectURL(file);
+        const v = document.createElement("video");
+        v.src = url;
+        v.preload = "metadata";
+        v.playsInline = true;
+        v.muted = true; // para permitir autoplay durante proceso
+        v.crossOrigin = "anonymous";
+        v.style.position = "fixed";
+        v.style.left = "-9999px";
+        v.style.top = "-9999px";
+        v.style.width = "1px";
+        v.style.height = "1px";
+        document.body.appendChild(v);
+
+        await new Promise((resolve, reject) => {
+          const onMeta = () => { cleanup(); resolve(); };
+          const onErr = () => { cleanup(); reject(new Error("No se pudo leer el video.")); };
+          const cleanup = () => {
+            v.removeEventListener("loadedmetadata", onMeta);
+            v.removeEventListener("error", onErr);
+          };
+          v.addEventListener("loadedmetadata", onMeta);
+          v.addEventListener("error", onErr);
+        });
+
+        const cleanupAll = () => {
+          try { v.pause(); } catch {}
+          try { URL.revokeObjectURL(url); } catch {}
+          try { v.remove(); } catch {}
+        };
+
+        return { v, cleanup: cleanupAll };
+      }
+
+      async function processVideoItem(item, settings) {
+        item.error = null;
+
+        if (typeof MediaRecorder === "undefined") {
+          item.error = "Este navegador no soporta exportación de video (MediaRecorder).";
+          return;
+        }
+
+        let loaded = null;
+        try {
+          loaded = await loadVideoElementFromFile(item.file);
+          const video = loaded.v;
+
+          const w = video.videoWidth || 0;
+          const h = video.videoHeight || 0;
+          const duration = Number.isFinite(video.duration) ? video.duration : null;
+          item.w = w;
+          item.h = h;
+          item.duration = duration;
+
+          if (!w || !h) throw new Error("Dimensiones inválidas del video.");
+
+          const ratioW = settings.maxSide / w;
+          const ratioH = settings.maxSide / h;
+          let ratio = Math.min(ratioW, ratioH);
+          if (ratio > 1) ratio = 1;
+
+          const w2 = Math.max(1, Math.round(w * ratio));
+          const h2 = Math.max(1, Math.round(h * ratio));
+          item.pw = w2;
+          item.ph = h2;
+
+          // Canvas de salida
+          const canvas = document.createElement("canvas");
+          canvas.width = w2;
+          canvas.height = h2;
+          const ctx = canvas.getContext("2d", { alpha: false, willReadFrequently: false });
+
+          // Overlay marca (se dibuja una vez)
+          const overlay = buildWatermarkOverlayCanvas(w2, h2, settings);
+
+          // Streams
+          const fps = settings.videoFps;
+          const canvasStream = canvas.captureStream(fps);
+
+          // Intento capturar audio
+          let audioTracks = [];
+          try {
+            if (video.captureStream) {
+              const vStream = video.captureStream();
+              audioTracks = vStream ? vStream.getAudioTracks() : [];
+            }
+          } catch {}
+
+          const outStream = new MediaStream([
+            ...canvasStream.getVideoTracks(),
+            ...audioTracks
+          ]);
+
+          const { mime, ext } = pickRecorderMime();
+          const bitsPerSecond = settings.videoMbps * 1_000_000;
+
+          const recorder = new MediaRecorder(outStream, mime ? { mimeType: mime, videoBitsPerSecond: bitsPerSecond } : { videoBitsPerSecond: bitsPerSecond });
+          const chunks = [];
+
+          const onData = (e) => { if (e.data && e.data.size) chunks.push(e.data); };
+          recorder.addEventListener("dataavailable", onData);
+
+          // Pintado frame-a-frame
+          let rafId = 0;
+          const renderFrame = () => {
+            if (state.cancel) return;
+            // Dibuja video + overlay
+            try {
+              ctx.drawImage(video, 0, 0, w2, h2);
+              ctx.drawImage(overlay, 0, 0);
+            } catch {}
+            rafId = requestAnimationFrame(renderFrame);
+          };
+
+          // Arrancamos
+          state.cancel = false;
+          setStatus(`Iniciando render de video: ${item.name}`);
+          setProgress(0);
+
+          // Reiniciar al inicio
+          try { video.currentTime = 0; } catch {}
+
+          // Necesario para que captureStream tenga frames: play()
+          await video.play();
+
+          // Start loop y grabación
+          renderFrame();
+          recorder.start(250); // slice cada 250ms
+
+          // Progreso por tiempo
+          const progTimer = setInterval(() => {
+            if (state.cancel) return;
+            if (Number.isFinite(video.duration) && video.duration > 0) {
+              const p = Math.round((video.currentTime / video.duration) * 100);
+              setProgress(p);
+              setStatus(`Procesando video... ${p}% (${formatTime(video.currentTime)} / ${formatTime(video.duration)})`);
+            } else {
+              setStatus(`Procesando video... ${formatTime(video.currentTime)}`);
+            }
+          }, 250);
+
+          // Esperar fin
+          await new Promise((resolve, reject) => {
+            const onEnd = () => resolve();
+            const onErr = () => reject(new Error("Error reproduciendo el video."));
+            video.addEventListener("ended", onEnd, { once: true });
+            video.addEventListener("error", onErr, { once: true });
+          });
+
+          // Stop
+          clearInterval(progTimer);
+          try { recorder.stop(); } catch {}
+          try { cancelAnimationFrame(rafId); } catch {}
+          try { video.pause(); } catch {}
+
+          // Esperar stop
+          const blob = await new Promise((resolve, reject) => {
+            const t = setTimeout(() => reject(new Error("Tiempo de espera exportando video.")), 20000);
+            recorder.addEventListener("stop", () => {
+              clearTimeout(t);
+              try {
+                const b = new Blob(chunks, { type: (recorder.mimeType || mime || "video/webm") });
+                resolve(b);
+              } catch (e) {
+                reject(new Error("No se pudo construir el archivo de video."));
+              }
+            }, { once: true });
+          });
+
+          if (item.processedUrl) URL.revokeObjectURL(item.processedUrl);
+          item.processedBlob = blob;
+          item.processedUrl = URL.createObjectURL(blob);
+          item.processedName = safeFileName(`${baseName(item.name)}_marcado.${ext}`);
+
+          setProgress(100);
+        } catch (err) {
+          console.error("Error procesando video", item.name, err);
+          item.error = (err && err.message) ? err.message : "Error al procesar video.";
+          item.processedBlob = null;
+          if (item.processedUrl) { URL.revokeObjectURL(item.processedUrl); item.processedUrl = null; }
+          item.processedName = null;
+        } finally {
+          if (loaded && loaded.cleanup) loaded.cleanup();
+        }
+      }
+
+      // ===============================
+      // Procesar todo
+      // ===============================
+      async function processOneItem(item, settings) {
+        if (item.kind === "video") return processVideoItem(item, settings);
+        return processImageItem(item, settings);
+      }
+
+      async function processAll() {
+        if (state.isProcessing) return;
+        if (!state.items.length) {
+          setStatus("Primero agrega archivos.", "err");
+          return;
+        }
+
+        state.isProcessing = true;
+        state.cancel = false;
+        setProgress(0);
+        el.btnProcess.disabled = true;
+        el.btnDownload.disabled = true;
+        setStatus("Procesando...");
+
+        const settings = getSettings();
+        let ok = 0;
+        let fail = 0;
+
+        for (let i = 0; i < state.items.length; i++) {
+          if (state.cancel) break;
+
+          const item = state.items[i];
+          setStatus(`Procesando ${i + 1} / ${state.items.length}: ${item.name}`);
+          await processOneItem(item, settings);
+
+          if (item.processedBlob) ok++; else fail++;
+          // Para fotos se usa progreso por cantidad; para videos se actualiza dentro del proceso.
+          if (item.kind !== "video") {
+            setProgress(Math.round(((i + 1) / state.items.length) * 100));
+          }
+          renderGalleryOnly();
+        }
+
+        state.isProcessing = false;
+        el.btnProcess.disabled = false;
+
+        const processedCount = countProcessed();
+        el.btnDownload.disabled = processedCount === 0;
+
+        if (state.cancel) {
+          setStatus(`⛔ Cancelado. Procesadas: ${ok}. Fallaron: ${fail}.`, "err");
+        } else if (processedCount > 0 && fail === 0) {
+          setStatus(`✅ Listo. ${ok} archivo(s) procesados.`, "ok");
+        } else if (processedCount > 0 && fail > 0) {
+          setStatus(`⚠️ Procesados: ${ok}. Fallaron: ${fail}.`, "err");
+        } else {
+          setStatus(`❌ No se pudo procesar ningún archivo.`, "err");
+        }
+
+        render();
+      }
+
+      // ===============================
+      // Descargas
+      // ===============================
+      function triggerDownload(blob, fileName) {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1200);
+      }
+
+      async function downloadAll() {
+        const ready = state.items.filter(i => i.processedBlob);
+        if (!ready.length) {
+          setStatus("No hay archivos procesados para descargar.", "err");
+          return;
+        }
+
+        try {
+          el.btnDownload.disabled = true;
+
+          if (ready.length === 1) {
+            const one = ready[0];
+            triggerDownload(one.processedBlob, one.processedName || "archivo_marcado");
+            setStatus(`Descarga iniciada: ${one.processedName}`, "ok");
+            return;
+          }
+
+          // Si pesa demasiado, evitar ZIP
+          const totalBytes = ready.reduce((s, it) => s + (it.processedBlob ? it.processedBlob.size : 0), 0);
+          const tooBigForZip = totalBytes > 250 * 1024 * 1024; // 250MB
+
+          if (tooBigForZip) {
+            setStatus(`⚠️ Son ${formatBytes(totalBytes)}. Para evitar que se trabe el navegador, se descargarán uno por uno (puede pedir permiso).`, "err");
+            for (const it of ready) {
+              triggerDownload(it.processedBlob, it.processedName || "archivo_marcado");
+              await new Promise(r => setTimeout(r, 500));
+            }
+            setStatus(`✅ Descargas iniciadas (${ready.length}).`, "ok");
+            return;
+          }
+
+          // ZIP normal
+          setStatus("Generando ZIP...");
+          const zip = new JSZip();
+          for (const item of ready) {
+            zip.file(item.processedName || `${baseName(item.name)}_marcado`, item.processedBlob);
+          }
+          const blob = await zip.generateAsync({ type: "blob", compression: "DEFLATE", compressionOptions: { level: 6 } });
+          const stamp = new Date();
+          const pad = (n) => String(n).padStart(2, "0");
+          const fileName = `multimedia_marcado_${stamp.getFullYear()}-${pad(stamp.getMonth()+1)}-${pad(stamp.getDate())}_${pad(stamp.getHours())}-${pad(stamp.getMinutes())}.zip`;
+          triggerDownload(blob, fileName);
+          setStatus(`✅ ZIP listo (${ready.length} archivos).`, "ok");
+        } catch (err) {
+          console.error(err);
+          setStatus("Error al generar la descarga/ZIP.", "err");
+        } finally {
+          el.btnDownload.disabled = countProcessed() === 0;
+        }
+      }
+
+      function downloadSingleItem(id) {
+        const item = state.items.find(i => i.id === id);
+        if (!item) return;
+        if (!item.processedBlob) {
+          setStatus("Ese archivo todavía no está procesado.", "err");
+          return;
+        }
+        triggerDownload(item.processedBlob, item.processedName || "archivo_marcado");
+      }
+
+      function removeItem(id) {
+        const idx = state.items.findIndex(i => i.id === id);
+        if (idx < 0) return;
+        revokeItemUrls(state.items[idx]);
+        state.items.splice(idx, 1);
+        setStatus("Archivo eliminado.");
+        render();
+      }
+
+      // ===============================
+      // Render UI
+      // ===============================
+      function countProcessed() {
+        return state.items.filter(i => !!i.processedBlob).length;
+      }
+
+      function renderGalleryOnly() {
+        el.gallery.innerHTML = "";
+        for (const item of state.items) {
+          const div = document.createElement("div");
+          div.className = "item";
+
+          const previewUrl = item.processedUrl || item.originalUrl;
+          const badge = item.processedBlob ? "✅ Procesado" : (item.kind === "video" ? "🎬 Video" : "🖼️ Foto");
+
+          const mediaHtml = item.kind === "video"
+            ? `<video src="${previewUrl}" muted playsinline controls></video>`
+            : `<img src="${previewUrl}" alt="">`;
+
+          div.innerHTML = `
+            <div class="thumbWrap">
+              ${mediaHtml}
+              <div class="badge">${badge}</div>
+            </div>
+            <div class="name"></div>
+            <div class="meta"></div>
+            <div class="miniActions">
+              <button data-act="remove">🗑️ Quitar</button>
+              <button data-act="download" ${item.processedBlob ? "" : "disabled"}>⬇️ Descargar</button>
+            </div>
+          `;
+
+          div.querySelector(".name").textContent = item.name;
+
+          const metaParts = [];
+          if (item.w && item.h) metaParts.push(`${item.w}×${item.h}`);
+          if (item.pw && item.ph && (item.pw !== item.w || item.ph !== item.h)) metaParts.push(`→ ${item.pw}×${item.ph}`);
+          if (item.kind === "video" && item.duration) metaParts.push(`⏱️ ${formatTime(item.duration)}`);
+          metaParts.push(formatBytes(item.file.size));
+          if (item.processedBlob) metaParts.push(`✅ ${formatBytes(item.processedBlob.size)}`);
+          if (item.error) metaParts.push(`❌ ${item.error}`);
+          div.querySelector(".meta").textContent = metaParts.join(" • ");
+
+          div.querySelector('[data-act="remove"]').addEventListener("click", () => removeItem(item.id));
+          div.querySelector('[data-act="download"]').addEventListener("click", () => downloadSingleItem(item.id));
+
+          el.gallery.appendChild(div);
+        }
+      }
+
+      function render() {
+        el.countItems.textContent = String(state.items.length);
+        el.countProcessed.textContent = String(countProcessed());
+        el.emptyState.classList.toggle("hidden", state.items.length > 0);
+        renderGalleryOnly();
+        el.btnDownload.disabled = countProcessed() === 0;
+      }
+
+      // ===============================
+      // Eventos
+      // ===============================
+      el.opacity.addEventListener("input", () => {
+        el.opacityValue.textContent = Number(el.opacity.value).toFixed(2);
+      });
+
+      el.fileType.addEventListener("change", updatePickModeUI);
+
+      el.btnGallery.addEventListener("click", () => {
+        const pick = el.fileType.value || "images";
+        if (pick === "videos") el.inputVideos.click();
+        else if (pick === "both") el.inputBoth.click();
+        else el.inputImages.click();
+      });
+
+      el.btnCamera.addEventListener("click", () => {
+        const pick = el.fileType.value || "images";
+        if (pick === "videos") el.inputVideoCamera.click();
+        else if (pick === "both") el.inputImageCamera.click();
+        else el.inputImageCamera.click();
+      });
+
+      el.inputImages.addEventListener("change", (e) => {
+        addFiles(e.target.files, "galeria");
+        e.target.value = "";
+      });
+
+      el.inputImageCamera.addEventListener("change", (e) => {
+        addFiles(e.target.files, "camara");
+        e.target.value = "";
+      });
+
+      el.inputVideos.addEventListener("change", (e) => {
+        addFiles(e.target.files, "galeria_video");
+        e.target.value = "";
+      });
+
+      el.inputBoth.addEventListener("change", (e) => {
+        addFiles(e.target.files, "galeria_mixto");
+        e.target.value = "";
+      });
+
+      el.inputVideoCamera.addEventListener("change", (e) => {
+        addFiles(e.target.files, "camara_video");
+        e.target.value = "";
+      });
+
+      el.btnClear.addEventListener("click", clearAll);
+      el.btnProcess.addEventListener("click", processAll);
+      el.btnDownload.addEventListener("click", downloadAll);
+
+      // Drag & drop
+      ["dragenter", "dragover"].forEach(type => {
+        el.dropZone.addEventListener(type, (e) => {
+          e.preventDefault();
+          el.dropZone.classList.add("active");
+        });
+      });
+      ["dragleave", "dragend"].forEach(type => {
+        el.dropZone.addEventListener(type, () => el.dropZone.classList.remove("active"));
+      });
+      el.dropZone.addEventListener("drop", handleDrop);
+
+      document.addEventListener("dragover", (e) => e.preventDefault());
+      document.addEventListener("drop", (e) => {
+        if (!el.dropZone.contains(e.target)) handleDrop(e);
+      });
+
+      document.addEventListener("paste", handlePaste);
+
+      document.addEventListener("keydown", (e) => {
+        if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+          e.preventDefault();
+          processAll();
+        }
+        if (e.key === "Escape" && state.isProcessing) {
+          state.cancel = true;
+          setStatus("⛔ Cancelando...");
+        }
+      });
+
+      // Inicial
+      el.opacityValue.textContent = Number(el.opacity.value).toFixed(2);
+      updatePickModeUI();
+      render();
+      setStatus("Listo para recibir fotos o videos.");
+    })();
+  </script>
+</body>
+</html>
