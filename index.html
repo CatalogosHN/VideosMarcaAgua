@@ -267,6 +267,10 @@
               <input id="videoMbps" type="number" min="1" max="40" step="1" value="10" />
               <div class="hint">Más alto = más calidad y más peso.</div>
             </div>
+            <div class="field">
+              <label class="checkline"><input id="videoUseFFmpeg" type="checkbox" checked /> Compatibilidad H.265/HEVC (FFmpeg)</label>
+              <div class="hint">Si tu video sale 0:00 / “dimensiones inválidas”, este modo lo convierte internamente (más lento, pero compatible).</div>
+            </div>
           </div>
 
           <div class="drop" id="dropZone">
@@ -340,6 +344,7 @@
 
   <!-- JSZip -->
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.6/dist/umd/ffmpeg.js"></script>
 
   <script>
     (() => {
@@ -372,6 +377,7 @@
 
         videoFps: $("videoFps"),
         videoMbps: $("videoMbps"),
+        videoUseFFmpeg: $("videoUseFFmpeg"),
         photoOptions: $("photoOptions"),
         videoOptions: $("videoOptions"),
 
@@ -488,8 +494,9 @@
         // Videos
         const videoFps = clamp(parseInt(el.videoFps.value || "30", 10), 10, 60);
         const videoMbps = clamp(parseInt(el.videoMbps.value || "10", 10), 1, 40);
+        const videoUseFFmpeg = !!(el.videoUseFFmpeg && el.videoUseFFmpeg.checked);
 
-        return { num1, num2, maxSide, jpgQuality, opacity, mode, photoOut, videoFps, videoMbps };
+        return { num1, num2, maxSide, jpgQuality, opacity, mode, photoOut, videoFps, videoMbps, videoUseFFmpeg };
       }
 
       function rgbaFromOpacity(opacity) {
@@ -597,6 +604,7 @@
             pw: null,
             ph: null,
             duration: null,
+            codecHint: null,
             error: null
           });
 
@@ -878,6 +886,36 @@
         return { mime: "", ext: "webm" };
       }
 
+
+      async function sniffVideoCodec(file) {
+        // Detecta de forma aproximada el codec leyendo FourCC dentro del contenedor (MP4/WebM).
+        // Nota: no es 100% garantizado, pero ayuda a diagnosticar por qué un "MP4" no reproduce en el navegador.
+        try {
+          const max = Math.min(file.size || 0, 2 * 1024 * 1024); // 2MB
+          const ab = await file.slice(0, max).arrayBuffer();
+          const txt = new TextDecoder("latin1").decode(new Uint8Array(ab));
+          const hits = [];
+          const add = (code, label) => { if (txt.includes(code)) hits.push(label); };
+
+          // Video
+          add("hvc1", "HEVC/H.265 (hvc1)");
+          add("hev1", "HEVC/H.265 (hev1)");
+          add("avc1", "H.264/AVC (avc1)");
+          add("av01", "AV1 (av01)");
+          add("vp09", "VP9 (vp09)");
+          add("vp08", "VP8 (vp08)");
+
+          // Audio (solo como pista)
+          add("mp4a", "Audio AAC (mp4a)");
+          add("Opus", "Audio Opus (Opus)");
+
+          const uniq = Array.from(new Set(hits));
+          return uniq.length ? uniq.join(", ") : "No detectado";
+        } catch {
+          return "No detectado";
+        }
+      }
+
       async function loadVideoElementFromFile(file) {
   const url = URL.createObjectURL(file);
   const v = document.createElement("video");
@@ -941,7 +979,7 @@
 
   return { v, cleanup: cleanupAll };
 }
-      async function processVideoItem(item, settings) {
+      async function processVideoItem_canvas(item, settings) {
         item.error = null;
 
         if (typeof MediaRecorder === "undefined") {
@@ -951,6 +989,7 @@
 
         let loaded = null;
         try {
+          item.codecHint = await sniffVideoCodec(item.file);
           loaded = await loadVideoElementFromFile(item.file);
           const video = loaded.v;
 
@@ -961,7 +1000,16 @@
           item.h = h;
           item.duration = duration;
 
-          if (!w || !h) throw new Error("No pude leer las dimensiones/duración del video. Esto suele pasar cuando el navegador no puede reproducir ese codec (por ejemplo HEVC/H.265). Convierte el video a MP4 (H.264/AVC + AAC) y vuelve a intentar.");
+          if (!w || !h) {
+            const hint = (item.codecHint && item.codecHint !== "No detectado") ? `\nDetecté: ${item.codecHint}` : "";
+            throw new Error(
+              "No pude leer las dimensiones/duración del video. Esto suele pasar cuando el navegador NO puede reproducir el codec del archivo (aunque diga .mp4)." +
+              hint +
+              "\n\nSoluciones rápidas:" +
+              "\n• Si detecta HEVC/H.265: cambia la cámara a H.264 (desactiva HEVC/‘alta eficiencia’) o convierte el video a MP4 H.264 (AVC + AAC)." +
+              "\n• Si el video se reproduce en VLC pero en el navegador muestra 0:00, casi seguro es un tema de codec en el navegador/Windows."
+            );
+          }
 
           const ratioW = settings.maxSide / w;
           const ratioH = settings.maxSide / h;
@@ -1084,13 +1132,315 @@
           setProgress(100);
         } catch (err) {
           console.error("Error procesando video", item.name, err);
-          item.error = (err && err.message) ? err.message : "Error al procesar video.";
+          let msg = (err && err.message) ? err.message : "Error al procesar video.";
+          if (item.codecHint && item.codecHint !== "No detectado" && !msg.includes("Detecté:")) {
+            msg += `\nDetecté: ${item.codecHint}`;
+          }
+          if (item.codecHint && (item.codecHint.includes("HEVC") || item.codecHint.includes("hvc1") || item.codecHint.includes("hev1"))) {
+            msg += "\nTip: en tu cámara busca 'HEVC' / 'Alta eficiencia' / 'High efficiency' y desactívalo para grabar en H.264 (más compatible).";
+          }
+          item.error = msg;
           item.processedBlob = null;
           if (item.processedUrl) { URL.revokeObjectURL(item.processedUrl); item.processedUrl = null; }
           item.processedName = null;
         } finally {
           if (loaded && loaded.cleanup) loaded.cleanup();
         }
+      }
+
+      // ===============================
+      // Video compat (FFmpeg.wasm) - para H.265/HEVC u otros codecs no reproducibles en el navegador
+      // ===============================
+      const FFMPEG_CORE_URL = "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.js";
+      let _ffmpeg = null;
+      let _fetchFile = null;
+      let _ffmpegLoading = null;
+
+      function parseTimeHHMMSS(str) {
+        const m = String(str || "").trim().match(/^(\d+):(\d+):(\d+(?:\.\d+)?)$/);
+        if (!m) return null;
+        const hh = parseFloat(m[1]);
+        const mm = parseFloat(m[2]);
+        const ss = parseFloat(m[3]);
+        return (hh * 3600) + (mm * 60) + ss;
+      }
+
+      async function ensureFFmpeg() {
+        if (_ffmpeg && _ffmpeg.isLoaded && _ffmpeg.isLoaded()) return { ffmpeg: _ffmpeg, fetchFile: _fetchFile };
+        if (_ffmpegLoading) return _ffmpegLoading;
+
+        _ffmpegLoading = (async () => {
+          if (!window.FFmpeg || !window.FFmpeg.createFFmpeg) {
+            throw new Error("No pude cargar FFmpeg en el navegador. Abre esta página con internet (para descargar el motor) o súbela a GitHub Pages.");
+          }
+          const { createFFmpeg, fetchFile } = window.FFmpeg;
+          _fetchFile = fetchFile;
+          _ffmpeg = createFFmpeg({ log: true, corePath: FFMPEG_CORE_URL });
+          await _ffmpeg.load();
+          return { ffmpeg: _ffmpeg, fetchFile: _fetchFile };
+        })();
+
+        return _ffmpegLoading;
+      }
+
+      async function canvasToPngBytes(canvas) {
+        const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
+        const ab = await blob.arrayBuffer();
+        return new Uint8Array(ab);
+      }
+
+      async function parseMP4Meta(file) {
+        // Lee ancho/alto y duración desde 'tkhd' y 'mvhd' del MP4.
+        try {
+          const ab = await file.arrayBuffer();
+          const dv = new DataView(ab);
+          const u8 = new Uint8Array(ab);
+          const readStr = (o, n) => String.fromCharCode(...u8.slice(o, o + n));
+          const readU32 = (o) => dv.getUint32(o);
+          const readU64 = (o) => {
+            const hi = dv.getUint32(o);
+            const lo = dv.getUint32(o + 4);
+            return hi * 2 ** 32 + lo;
+          };
+
+          const len = dv.byteLength;
+          function readBox(off) {
+            if (off + 8 > len) return null;
+            let size = readU32(off);
+            const type = readStr(off + 4, 4);
+            let header = 8;
+            if (size === 1) {
+              if (off + 16 > len) return null;
+              size = readU64(off + 8);
+              header = 16;
+            } else if (size === 0) {
+              size = len - off;
+            }
+            if (size < header || off + size > len) return null;
+            return { off, size, type, header, dataOff: off + header, end: off + size };
+          }
+
+          let width = 0, height = 0, durationSec = null;
+
+          function walk(off, end) {
+            let p = off;
+            while (p + 8 <= end) {
+              const box = readBox(p);
+              if (!box) break;
+
+              if (box.type === "mvhd") {
+                const base = box.dataOff;
+                const version = dv.getUint8(base);
+                let pos = base + 4;
+                if (version === 1) {
+                  pos += 8 + 8;
+                  const timescale = readU32(pos); pos += 4;
+                  const dur = readU64(pos);
+                  if (timescale) durationSec = dur / timescale;
+                } else {
+                  pos += 4 + 4;
+                  const timescale = readU32(pos); pos += 4;
+                  const dur = readU32(pos);
+                  if (timescale) durationSec = dur / timescale;
+                }
+              }
+
+              if (box.type === "tkhd") {
+                const base = box.dataOff;
+                const version = dv.getUint8(base);
+                let pos = base + 4;
+                if (version === 1) {
+                  pos += 8 + 8 + 4 + 4 + 8;
+                } else {
+                  pos += 4 + 4 + 4 + 4 + 4;
+                }
+                pos += 8;
+                pos += 2 + 2 + 2 + 2;
+                pos += 36;
+                const w1616 = readU32(pos);
+                const h1616 = readU32(pos + 4);
+                const w = w1616 / 65536;
+                const h = h1616 / 65536;
+                if (w > width) width = w;
+                if (h > height) height = h;
+              }
+
+              const containers = new Set(["moov", "trak", "mdia", "minf", "stbl"]);
+              if (containers.has(box.type)) {
+                walk(box.dataOff, box.end);
+              }
+
+              p = box.end;
+            }
+          }
+
+          walk(0, len);
+
+          width = Math.round(width);
+          height = Math.round(height);
+          return { width, height, durationSec: (durationSec && Number.isFinite(durationSec)) ? durationSec : null };
+        } catch {
+          return { width: 0, height: 0, durationSec: null };
+        }
+      }
+
+      async function processVideoItem_ffmpeg(item, settings) {
+        item.error = null;
+        setProgress(0);
+
+        try {
+          setStatus("⚙️ Modo compatibilidad: cargando motor (FFmpeg)...");
+          const { ffmpeg, fetchFile } = await ensureFFmpeg();
+
+          // Meta desde MP4 (sin reproducir)
+          const meta = await parseMP4Meta(item.file);
+          const w = meta.width || item.w || 0;
+          const h = meta.height || item.h || 0;
+          const durationSec = meta.durationSec ?? item.duration ?? null;
+
+          item.w = w;
+          item.h = h;
+          item.duration = durationSec;
+
+          if (!w || !h) throw new Error("No pude leer dimensiones del MP4. (Si está dañado, conviértelo primero a MP4 H.264).");
+
+          // Escala
+          const ratioW = settings.maxSide / w;
+          const ratioH = settings.maxSide / h;
+          let ratio = Math.min(ratioW, ratioH);
+          if (ratio > 1) ratio = 1;
+          const w2 = Math.max(2, Math.round(w * ratio));
+          const h2 = Math.max(2, Math.round(h * ratio));
+          item.pw = w2;
+          item.ph = h2;
+
+          // Overlay PNG
+          setStatus("🧩 Generando marca de agua (compatibilidad)...");
+          const overlayCanvas = buildWatermarkOverlayCanvas(w2, h2, settings);
+          const overlayBytes = await canvasToPngBytes(overlayCanvas);
+
+          const safeUnlink = (name) => { try { ffmpeg.FS("unlink", name); } catch {} };
+          safeUnlink("input.mp4"); safeUnlink("overlay.png"); safeUnlink("output.mp4");
+
+          setStatus("📥 Cargando video en memoria (compatibilidad)...");
+          ffmpeg.FS("writeFile", "input.mp4", await fetchFile(item.file));
+          ffmpeg.FS("writeFile", "overlay.png", overlayBytes);
+
+          // Progreso por logs
+          let lastPct = 0;
+          let durForProg = (durationSec && durationSec > 0) ? durationSec : null;
+
+          ffmpeg.setLogger(({ message }) => {
+            if (!message) return;
+            if (!durForProg) {
+              const md = message.match(/Duration:\s+(\d+:\d+:\d+(?:\.\d+)?)/);
+              if (md) {
+                const sec = parseTimeHHMMSS(md[1]);
+                if (sec && sec > 0) durForProg = sec;
+              }
+            }
+            const mt = message.match(/time=(\d+:\d+:\d+(?:\.\d+)?)/);
+            if (mt && durForProg) {
+              const tSec = parseTimeHHMMSS(mt[1]);
+              if (tSec != null) {
+                const pct = Math.max(0, Math.min(99, Math.round((tSec / durForProg) * 100)));
+                if (pct !== lastPct) {
+                  lastPct = pct;
+                  setProgress(pct);
+                  setStatus(`Procesando (compatibilidad)... ${pct}% (${formatTime(tSec)} / ${formatTime(durForProg)})`);
+                }
+              }
+            }
+          });
+
+          setStatus("🎬 Procesando video (compatibilidad)...");
+
+          const filter = `[0:v]scale=${w2}:${h2}[v0];[v0][1:v]overlay=0:0:format=auto,format=yuv420p[v]`;
+          const argsBase = [
+            "-i", "input.mp4",
+            "-i", "overlay.png",
+            "-filter_complex", filter,
+            "-map", "[v]",
+            "-map", "0:a?",
+            "-movflags", "+faststart",
+            "-pix_fmt", "yuv420p",
+            "-c:a", "aac",
+            "-b:a", "128k"
+          ];
+
+          let encoded = false;
+          try {
+            await ffmpeg.run(...argsBase, "-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "output.mp4");
+            encoded = true;
+          } catch {
+            try {
+              await ffmpeg.run(...argsBase, "-c:v", "libopenh264", "-b:v", `${settings.videoMbps}M`, "output.mp4");
+              encoded = true;
+            } catch {
+              await ffmpeg.run(...argsBase, "-c:v", "mpeg4", "-q:v", "3", "output.mp4");
+              encoded = true;
+            }
+          }
+
+          if (!encoded) throw new Error("No pude codificar el video en este navegador.");
+
+          const out = ffmpeg.FS("readFile", "output.mp4");
+          const blob = new Blob([out.buffer], { type: "video/mp4" });
+
+          if (item.processedUrl) URL.revokeObjectURL(item.processedUrl);
+          item.processedBlob = blob;
+          item.processedUrl = URL.createObjectURL(blob);
+          item.processedName = safeFileName(`${baseName(item.name)}_marcado.mp4`);
+
+          setProgress(100);
+          safeUnlink("input.mp4"); safeUnlink("overlay.png"); safeUnlink("output.mp4");
+        } catch (err) {
+          console.error("FFmpeg compat error", err);
+          const msg = (err && err.message) ? err.message : "Error en modo compatibilidad (FFmpeg).";
+          item.error = msg + "\n\nTip: Este modo requiere internet la primera vez (descarga FFmpeg). Si lo abriste como archivo local y falla, súbelo a GitHub Pages o ábrelo con un servidor local (ej: python -m http.server).";
+          item.processedBlob = null;
+          if (item.processedUrl) { URL.revokeObjectURL(item.processedUrl); item.processedUrl = null; }
+          item.processedName = null;
+        }
+      }
+
+      async function processVideoItem(item, settings) {
+        // Wrapper: método rápido (canvas+MediaRecorder) y fallback a FFmpeg si el video no se puede reproducir (H.265/HEVC).
+        item.error = null;
+        item.codecHint = await sniffVideoCodec(item.file);
+        const looksHevc = item.codecHint && (item.codecHint.includes("HEVC") || item.codecHint.includes("hvc1") || item.codecHint.includes("hev1"));
+
+        if (looksHevc && settings.videoUseFFmpeg) {
+          await processVideoItem_ffmpeg(item, settings);
+          return;
+        }
+
+        if (typeof MediaRecorder !== "undefined") {
+          await processVideoItem_canvas(item, settings);
+
+          if (!item.processedBlob && settings.videoUseFFmpeg) {
+            const err = (item.error || "").toLowerCase();
+            const likelyCodecIssue =
+              looksHevc ||
+              err.includes("dimensiones") ||
+              err.includes("codec") ||
+              err.includes("0:00") ||
+              err.includes("no se pudo leer") ||
+              err.includes("no pude leer");
+            if (likelyCodecIssue) {
+              item.error = null;
+              await processVideoItem_ffmpeg(item, settings);
+            }
+          }
+          return;
+        }
+
+        if (settings.videoUseFFmpeg) {
+          await processVideoItem_ffmpeg(item, settings);
+          return;
+        }
+
+        item.error = "Este navegador no soporta exportación de video (MediaRecorder) y el modo compatibilidad (FFmpeg) está apagado.";
       }
 
       // ===============================
@@ -1276,6 +1626,7 @@
           if (item.w && item.h) metaParts.push(`${item.w}×${item.h}`);
           if (item.pw && item.ph && (item.pw !== item.w || item.ph !== item.h)) metaParts.push(`→ ${item.pw}×${item.ph}`);
           if (item.kind === "video" && item.duration) metaParts.push(`⏱️ ${formatTime(item.duration)}`);
+          if (item.kind === "video" && item.codecHint) metaParts.push(`🎞️ ${item.codecHint}`);
           metaParts.push(formatBytes(item.file.size));
           if (item.processedBlob) metaParts.push(`✅ ${formatBytes(item.processedBlob.size)}`);
           if (item.error) metaParts.push(`❌ ${item.error}`);
